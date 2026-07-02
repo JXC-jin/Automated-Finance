@@ -49,4 +49,5 @@ jobs:
         with:
           name: daily-report-${{ github.run_id }}
           path: .cache/report_*.html
+          include-hidden-files: true
           retention-days: 7
