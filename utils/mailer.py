@@ -4,6 +4,7 @@ utils/mailer.py
 """
 import logging
 import smtplib
+import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List
@@ -53,27 +54,48 @@ def send_html_email(
         if fallback_port not in ports:
             ports.append(fallback_port)
 
+    local_hostname = sender.split("@")[-1] if "@" in sender else "localhost"
+    context = ssl.create_default_context()
+
     for port in ports:
         server = None
+        stage = "connect"
         try:
             logger.info(f"尝试通过 {smtp_host}:{port} 发送邮件")
             if port == 465:
-                server = smtplib.SMTP_SSL(smtp_host, port, timeout=30)
+                server = smtplib.SMTP_SSL(
+                    smtp_host,
+                    port,
+                    local_hostname=local_hostname,
+                    timeout=30,
+                    context=context,
+                )
             else:
-                server = smtplib.SMTP(smtp_host, port, timeout=30)
+                server = smtplib.SMTP(
+                    smtp_host,
+                    port,
+                    local_hostname=local_hostname,
+                    timeout=30,
+                )
+                stage = "ehlo-before-starttls"
                 server.ehlo()
-                server.starttls()
+                stage = "starttls"
+                server.starttls(context=context)
 
+            stage = "ehlo"
             server.ehlo()
+            stage = "login"
             server.login(sender, password)
+            stage = "sendmail"
             server.sendmail(sender, recipients, msg.as_string())
+            stage = "quit"
             server.quit()
 
             logger.info(f"✅ 邮件发送成功: {recipients}")
             return True
 
         except Exception as e:
-            logger.warning(f"{smtp_host}:{port} 发送失败: {e}")
+            logger.warning(f"{smtp_host}:{port} 在 {stage} 阶段发送失败: {e}")
             if server is not None:
                 try:
                     server.quit()
