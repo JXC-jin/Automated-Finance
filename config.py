@@ -12,9 +12,13 @@ def _normalize_email(value: str) -> str:
     return value
 
 
+def _normalize_secret(value: str) -> str:
+    return "".join((value or "").split())
+
+
 # ══ 邮件（填入 GitHub Secrets，字段名完全对应）══════════════════
 EMAIL_SENDER     = _normalize_email(os.getenv("USTCB_EMAIL_SENDER") or os.getenv("QQ") or os.getenv("QQ_EMAIL", "your_qq@qq.com"))
-EMAIL_PASSWORD   = os.getenv("USTCB_EMAIL_PASSWORD") or os.getenv("PASSWORD") or os.getenv("QQ_SMTP_PASSWORD", "your_smtp_auth_code")
+EMAIL_PASSWORD   = _normalize_secret(os.getenv("USTCB_EMAIL_PASSWORD") or os.getenv("PASSWORD") or os.getenv("QQ_SMTP_PASSWORD", "your_smtp_auth_code"))
 EMAIL_RECIPIENTS = [
     _normalize_email(recipient)
     for recipient in (

@@ -12,6 +12,30 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 
+def _login_candidates(sender: str) -> List[tuple[str, str]]:
+    sender = sender.strip()
+    candidates = [("完整邮箱", sender)]
+    if sender.lower().endswith("@qq.com"):
+        candidates.append(("QQ号", sender.split("@", 1)[0]))
+
+    seen = set()
+    result = []
+    for label, login_name in candidates:
+        if login_name not in seen:
+            seen.add(login_name)
+            result.append((label, login_name))
+    return result
+
+
+def _describe_login_error(host: str, ports: List[int], login_stage_failures: int) -> str:
+    if host == "smtp.qq.com" and login_stage_failures:
+        return (
+            f"QQ SMTP 登录失败，已尝试端口 {ports}。请重点检查 PASSWORD 是否为 QQ 邮箱"
+            "“SMTP 授权码”（不是 QQ 登录密码），以及 QQ/MAIL/PASSWORD 是否属于同一个已开启 SMTP 的邮箱账号。"
+        )
+    return "所有 SMTP 连接方式均失败"
+
+
 def send_html_email(
     sender: str,
     password: str,
@@ -37,6 +61,7 @@ def send_html_email(
         bool: 发送是否成功
     """
     recipients = [recipient.strip() for recipient in recipients if recipient.strip()]
+    password = "".join((password or "").split())
     if not sender or not password or not recipients:
         logger.error("邮件发送失败: 发件人、SMTP 授权码或收件人为空")
         return False
@@ -57,50 +82,54 @@ def send_html_email(
     local_hostname = sender.split("@")[-1] if "@" in sender else "localhost"
     context = ssl.create_default_context()
 
+    login_stage_failures = 0
     for port in ports:
-        server = None
-        stage = "connect"
-        try:
-            logger.info(f"尝试通过 {smtp_host}:{port} 发送邮件")
-            if port == 465:
-                server = smtplib.SMTP_SSL(
-                    smtp_host,
-                    port,
-                    local_hostname=local_hostname,
-                    timeout=30,
-                    context=context,
-                )
-            else:
-                server = smtplib.SMTP(
-                    smtp_host,
-                    port,
-                    local_hostname=local_hostname,
-                    timeout=30,
-                )
-                stage = "ehlo-before-starttls"
+        for login_label, login_name in _login_candidates(sender):
+            server = None
+            stage = "connect"
+            try:
+                logger.info(f"尝试通过 {smtp_host}:{port} 发送邮件，登录方式：{login_label}")
+                if port == 465:
+                    server = smtplib.SMTP_SSL(
+                        smtp_host,
+                        port,
+                        local_hostname=local_hostname,
+                        timeout=30,
+                        context=context,
+                    )
+                else:
+                    server = smtplib.SMTP(
+                        smtp_host,
+                        port,
+                        local_hostname=local_hostname,
+                        timeout=30,
+                    )
+                    stage = "ehlo-before-starttls"
+                    server.ehlo()
+                    stage = "starttls"
+                    server.starttls(context=context)
+
+                stage = "ehlo"
                 server.ehlo()
-                stage = "starttls"
-                server.starttls(context=context)
+                stage = "login"
+                server.login(login_name, password)
+                stage = "sendmail"
+                server.sendmail(sender, recipients, msg.as_string())
+                stage = "quit"
+                server.quit()
 
-            stage = "ehlo"
-            server.ehlo()
-            stage = "login"
-            server.login(sender, password)
-            stage = "sendmail"
-            server.sendmail(sender, recipients, msg.as_string())
-            stage = "quit"
-            server.quit()
+                logger.info(f"✅ 邮件发送成功: {recipients}")
+                return True
 
-            logger.info(f"✅ 邮件发送成功: {recipients}")
-            return True
+            except Exception as e:
+                if stage == "login":
+                    login_stage_failures += 1
+                logger.warning(f"{smtp_host}:{port} 使用{login_label}在 {stage} 阶段发送失败: {e}")
+                if server is not None:
+                    try:
+                        server.quit()
+                    except Exception:
+                        pass
 
-        except Exception as e:
-            logger.warning(f"{smtp_host}:{port} 在 {stage} 阶段发送失败: {e}")
-            if server is not None:
-                try:
-                    server.quit()
-                except Exception:
-                    pass
-
-    logger.error("❌ 邮件发送失败: 所有 SMTP 连接方式均失败")
+    logger.error(f"❌ 邮件发送失败: {_describe_login_error(smtp_host, ports, login_stage_failures)}")
     return False
