@@ -35,27 +35,50 @@ def send_html_email(
     Returns:
         bool: 发送是否成功
     """
-    try:
-        recipients = [recipient.strip() for recipient in recipients if recipient.strip()]
-        if not sender or not password or not recipients:
-            logger.error("邮件发送失败: 发件人、SMTP 授权码或收件人为空")
-            return False
+    recipients = [recipient.strip() for recipient in recipients if recipient.strip()]
+    if not sender or not password or not recipients:
+        logger.error("邮件发送失败: 发件人、SMTP 授权码或收件人为空")
+        return False
 
-        msg = MIMEMultipart("alternative")
-        msg["From"] = sender
-        msg["To"] = ", ".join(recipients)
-        msg["Subject"] = subject
-        
-        html_part = MIMEText(html_body, "html", "utf-8")
-        msg.attach(html_part)
-        
-        with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+    msg = MIMEMultipart("alternative")
+    msg["From"] = sender
+    msg["To"] = ", ".join(recipients)
+    msg["Subject"] = subject
+
+    html_part = MIMEText(html_body, "html", "utf-8")
+    msg.attach(html_part)
+
+    ports = [smtp_port]
+    for fallback_port in (587, 465):
+        if fallback_port not in ports:
+            ports.append(fallback_port)
+
+    for port in ports:
+        server = None
+        try:
+            logger.info(f"尝试通过 {smtp_host}:{port} 发送邮件")
+            if port == 465:
+                server = smtplib.SMTP_SSL(smtp_host, port, timeout=30)
+            else:
+                server = smtplib.SMTP(smtp_host, port, timeout=30)
+                server.ehlo()
+                server.starttls()
+
+            server.ehlo()
             server.login(sender, password)
             server.sendmail(sender, recipients, msg.as_string())
-        
-        logger.info(f"✅ 邮件发送成功: {recipients}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ 邮件发送失败: {e}")
-        return False
+            server.quit()
+
+            logger.info(f"✅ 邮件发送成功: {recipients}")
+            return True
+
+        except Exception as e:
+            logger.warning(f"{smtp_host}:{port} 发送失败: {e}")
+            if server is not None:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+
+    logger.error("❌ 邮件发送失败: 所有 SMTP 连接方式均失败")
+    return False
