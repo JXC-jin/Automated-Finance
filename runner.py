@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 from config import (
-    EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENTS,
+    EMAIL_SENDER, EMAIL_LOGIN_USER, EMAIL_PASSWORD, EMAIL_RECIPIENTS,
     EMAIL_CONFIGURED, DRY_RUN,
     SMTP_HOST, SMTP_PORT,
     RSS_SOURCES, FACTOR_WEIGHTS,
@@ -94,6 +94,7 @@ class DailyRunner:
         
         ok = send_html_email(
             sender=EMAIL_SENDER,
+            login_user=EMAIL_LOGIN_USER,
             password=EMAIL_PASSWORD,
             recipients=EMAIL_RECIPIENTS,
             subject=subject,

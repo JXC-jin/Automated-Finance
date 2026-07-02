@@ -37,6 +37,9 @@ jobs:
           USTCB_EMAIL_SENDER:   ${{ secrets.USTCB_EMAIL_SENDER || secrets.QQ }}
           USTCB_EMAIL_PASSWORD: ${{ secrets.USTCB_EMAIL_PASSWORD || secrets.PASSWORD }}
           USTCB_EMAIL_TO:       ${{ secrets.USTCB_EMAIL_TO || secrets.MAIL || secrets.QQ }}
+          SMTP_HOST:            ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:            ${{ secrets.SMTP_PORT }}
+          SMTP_USER:            ${{ secrets.SMTP_USER }}
           TRANSLATE_API_URL:    ${{ secrets.TRANSLATE_API_URL }}
           BAIDU_TRANSLATE_APPID:   ${{ secrets.BAIDU_TRANSLATE_APPID }}
           BAIDU_TRANSLATE_SECRET:  ${{ secrets.BAIDU_TRANSLATE_SECRET }}

@@ -16,8 +16,16 @@ def _normalize_secret(value: str) -> str:
     return "".join((value or "").split())
 
 
+def _get_int(value: str, default: int) -> int:
+    try:
+        return int((value or "").strip())
+    except ValueError:
+        return default
+
+
 # ══ 邮件（填入 GitHub Secrets，字段名完全对应）══════════════════
 EMAIL_SENDER     = _normalize_email(os.getenv("USTCB_EMAIL_SENDER") or os.getenv("QQ") or os.getenv("QQ_EMAIL", "your_qq@qq.com"))
+EMAIL_LOGIN_USER = _normalize_email(os.getenv("SMTP_USER") or os.getenv("USTCB_EMAIL_SENDER") or os.getenv("QQ") or os.getenv("QQ_EMAIL", ""))
 EMAIL_PASSWORD   = _normalize_secret(os.getenv("USTCB_EMAIL_PASSWORD") or os.getenv("PASSWORD") or os.getenv("QQ_SMTP_PASSWORD", "your_smtp_auth_code"))
 EMAIL_RECIPIENTS = [
     _normalize_email(recipient)
@@ -29,8 +37,8 @@ EMAIL_RECIPIENTS = [
     ).split(",")
     if _normalize_email(recipient)
 ]
-SMTP_HOST        = "smtp.qq.com"
-SMTP_PORT        = 465
+SMTP_HOST        = (os.getenv("SMTP_HOST") or "smtp.qq.com").strip()
+SMTP_PORT        = _get_int(os.getenv("SMTP_PORT"), 465)
 EMAIL_CONFIGURED = (
     EMAIL_SENDER != "your_qq@qq.com"
     and EMAIL_PASSWORD != "your_smtp_auth_code"

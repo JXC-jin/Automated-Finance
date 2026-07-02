@@ -12,9 +12,13 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 
-def _login_candidates(sender: str) -> List[tuple[str, str]]:
+def _login_candidates(sender: str, login_user: str = "") -> List[tuple[str, str]]:
     sender = sender.strip()
-    candidates = [("完整邮箱", sender)]
+    login_user = (login_user or "").strip()
+    candidates = []
+    if login_user:
+        candidates.append(("配置账号", login_user))
+    candidates.append(("发件邮箱", sender))
     if sender.lower().endswith("@qq.com"):
         candidates.append(("QQ号", sender.split("@", 1)[0]))
 
@@ -38,6 +42,7 @@ def _describe_login_error(host: str, ports: List[int], login_stage_failures: int
 
 def send_html_email(
     sender: str,
+    login_user: str,
     password: str,
     recipients: List[str],
     subject: str,
@@ -61,6 +66,7 @@ def send_html_email(
         bool: 发送是否成功
     """
     recipients = [recipient.strip() for recipient in recipients if recipient.strip()]
+    login_user = (login_user or sender).strip()
     password = "".join((password or "").split())
     if not sender or not password or not recipients:
         logger.error("邮件发送失败: 发件人、SMTP 授权码或收件人为空")
@@ -84,7 +90,7 @@ def send_html_email(
 
     login_stage_failures = 0
     for port in ports:
-        for login_label, login_name in _login_candidates(sender):
+        for login_label, login_name in _login_candidates(sender, login_user):
             server = None
             stage = "connect"
             try:

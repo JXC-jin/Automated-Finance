@@ -25,6 +25,16 @@
 | `USTCB_EMAIL_PASSWORD` | QQ 邮箱 **SMTP 授权码**（不是登录密码）|
 | `USTCB_EMAIL_TO` | 收件人邮箱，多个用逗号分隔 |
 
+也兼容旧 Secret 名称：`QQ`（发件邮箱/QQ号）、`PASSWORD`（SMTP 授权码）、`MAIL`（收件邮箱）。
+
+如果 QQ 邮箱在 GitHub Actions 中提示 SMTP 登录失败，可改用其它 SMTP 服务，额外添加：
+
+| Secret 名称 | 值 |
+|---|---|
+| `SMTP_HOST` | SMTP 服务器，如 `smtp.office365.com` |
+| `SMTP_PORT` | SMTP 端口，如 `587` |
+| `SMTP_USER` | SMTP 登录账号，不填则使用发件邮箱 |
+
 > **QQ 邮箱授权码获取方式**：
 > 登录 QQ 邮箱网页版 → 设置 → 账户 → POP3/IMAP/SMTP 服务 → 开启 → 短信验证 → 生成授权码
 
