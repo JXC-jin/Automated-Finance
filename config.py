@@ -5,11 +5,16 @@ config.py  —  USTCB 全局配置
 import os
 
 # ══ 邮件（填入 GitHub Secrets，字段名完全对应）══════════════════
-EMAIL_SENDER     = os.getenv("USTCB_EMAIL_SENDER") or os.getenv("QQ_EMAIL", "your_qq@qq.com")
-EMAIL_PASSWORD   = os.getenv("USTCB_EMAIL_PASSWORD") or os.getenv("QQ_SMTP_PASSWORD", "your_smtp_auth_code")
+EMAIL_SENDER     = os.getenv("USTCB_EMAIL_SENDER") or os.getenv("QQ") or os.getenv("QQ_EMAIL", "your_qq@qq.com")
+EMAIL_PASSWORD   = os.getenv("USTCB_EMAIL_PASSWORD") or os.getenv("PASSWORD") or os.getenv("QQ_SMTP_PASSWORD", "your_smtp_auth_code")
 EMAIL_RECIPIENTS = [
     recipient.strip()
-    for recipient in (os.getenv("USTCB_EMAIL_TO") or os.getenv("QQ_EMAIL", "your_qq@qq.com")).split(",")
+    for recipient in (
+        os.getenv("USTCB_EMAIL_TO")
+        or os.getenv("MAIL")
+        or os.getenv("QQ")
+        or os.getenv("QQ_EMAIL", "your_qq@qq.com")
+    ).split(",")
     if recipient.strip()
 ]
 SMTP_HOST        = "smtp.qq.com"

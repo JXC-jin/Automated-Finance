@@ -88,8 +88,8 @@ class DailyRunner:
 
         if not EMAIL_CONFIGURED:
             raise RuntimeError(
-                "邮箱配置不完整，请配置 USTCB_EMAIL_SENDER、"
-                "USTCB_EMAIL_PASSWORD 和 USTCB_EMAIL_TO"
+                "邮箱配置不完整，请配置 USTCB_EMAIL_SENDER/QQ、"
+                "USTCB_EMAIL_PASSWORD/PASSWORD 和 USTCB_EMAIL_TO/MAIL"
             )
         
         ok = send_html_email(

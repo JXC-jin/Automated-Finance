@@ -34,9 +34,9 @@ jobs:
 
       - name: 📈 生成并发送日报
         env:
-          USTCB_EMAIL_SENDER:   ${{ secrets.USTCB_EMAIL_SENDER }}
-          USTCB_EMAIL_PASSWORD: ${{ secrets.USTCB_EMAIL_PASSWORD }}
-          USTCB_EMAIL_TO:       ${{ secrets.USTCB_EMAIL_TO }}
+          USTCB_EMAIL_SENDER:   ${{ secrets.USTCB_EMAIL_SENDER || secrets.QQ }}
+          USTCB_EMAIL_PASSWORD: ${{ secrets.USTCB_EMAIL_PASSWORD || secrets.PASSWORD }}
+          USTCB_EMAIL_TO:       ${{ secrets.USTCB_EMAIL_TO || secrets.MAIL || secrets.QQ }}
           TRANSLATE_API_URL:    ${{ secrets.TRANSLATE_API_URL }}
           BAIDU_TRANSLATE_APPID:   ${{ secrets.BAIDU_TRANSLATE_APPID }}
           BAIDU_TRANSLATE_SECRET:  ${{ secrets.BAIDU_TRANSLATE_SECRET }}
