@@ -7,12 +7,22 @@ import os
 # ══ 邮件（填入 GitHub Secrets，字段名完全对应）══════════════════
 EMAIL_SENDER     = os.getenv("USTCB_EMAIL_SENDER") or os.getenv("QQ_EMAIL", "your_qq@qq.com")
 EMAIL_PASSWORD   = os.getenv("USTCB_EMAIL_PASSWORD") or os.getenv("QQ_SMTP_PASSWORD", "your_smtp_auth_code")
-EMAIL_RECIPIENTS = (os.getenv("USTCB_EMAIL_TO") or os.getenv("QQ_EMAIL", "your_qq@qq.com")).split(",")
+EMAIL_RECIPIENTS = [
+    recipient.strip()
+    for recipient in (os.getenv("USTCB_EMAIL_TO") or os.getenv("QQ_EMAIL", "your_qq@qq.com")).split(",")
+    if recipient.strip()
+]
 SMTP_HOST        = "smtp.qq.com"
 SMTP_PORT        = 465
+EMAIL_CONFIGURED = (
+    EMAIL_SENDER != "your_qq@qq.com"
+    and EMAIL_PASSWORD != "your_smtp_auth_code"
+    and bool(EMAIL_RECIPIENTS)
+    and all(recipient != "your_qq@qq.com" for recipient in EMAIL_RECIPIENTS)
+)
 
 # ══ 运行模式 ════════════════════════════════════════════════════
-DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"  # true=只生成HTML不发邮件
+DRY_RUN = os.getenv("DRY_RUN", "false").strip().lower() in {"1", "true", "yes", "on"}  # true=只生成HTML不发邮件
 
 # ══ 选股参数 ════════════════════════════════════════════════════
 TOP_STOCKS_COUNT = 10    # 推荐 A股数量

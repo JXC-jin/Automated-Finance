@@ -36,6 +36,11 @@ def send_html_email(
         bool: 发送是否成功
     """
     try:
+        recipients = [recipient.strip() for recipient in recipients if recipient.strip()]
+        if not sender or not password or not recipients:
+            logger.error("邮件发送失败: 发件人、SMTP 授权码或收件人为空")
+            return False
+
         msg = MIMEMultipart("alternative")
         msg["From"] = sender
         msg["To"] = ", ".join(recipients)

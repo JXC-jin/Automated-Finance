@@ -9,6 +9,7 @@ from datetime import datetime
 
 from config import (
     EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENTS,
+    EMAIL_CONFIGURED, DRY_RUN,
     SMTP_HOST, SMTP_PORT,
     RSS_SOURCES, FACTOR_WEIGHTS,
     TOP_STOCKS_COUNT, SECTOR_TOP_N, MARKET_TOP_N,
@@ -80,6 +81,16 @@ class DailyRunner:
         now = datetime.now()
         time_label = "早报" if now.hour < 12 else "晚报"
         subject = f"📈 财经{time_label} {today} | A股/美股/港股要闻 + AI动态 + 量化选股"
+
+        if DRY_RUN:
+            logger.info("DRY_RUN=true，仅生成 HTML 报告，跳过邮件发送")
+            return html_path
+
+        if not EMAIL_CONFIGURED:
+            raise RuntimeError(
+                "邮箱配置不完整，请配置 USTCB_EMAIL_SENDER、"
+                "USTCB_EMAIL_PASSWORD 和 USTCB_EMAIL_TO"
+            )
         
         ok = send_html_email(
             sender=EMAIL_SENDER,
@@ -91,5 +102,5 @@ class DailyRunner:
             smtp_port=SMTP_PORT,
         )
         if not ok:
-            logger.warning("邮件发送失败，但 HTML 报告已保存到本地")
+            raise RuntimeError("邮件发送失败，请检查 SMTP 授权码、收件人和网络连接")
         return html_path
