@@ -5,10 +5,9 @@ v2.0：并发抓取，大幅提升速度
 """
 
 import logging
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError, as_completed
+from dataclasses import dataclass
+from datetime import datetime
 from typing import List, Dict
 
 import feedparser
@@ -16,6 +15,10 @@ import requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
+
+RSS_CONNECT_TIMEOUT = 5
+RSS_READ_TIMEOUT = 12
+RSS_TOTAL_TIMEOUT = 50
 
 HEADERS = {
     "User-Agent": (
@@ -40,7 +43,13 @@ def _fetch_rss(url: str, category: str, source_name: str, max_items: int = 8) ->
     """抓取单个 RSS 源"""
     items: List[NewsItem] = []
     try:
-        feed = feedparser.parse(url, request_headers=HEADERS)
+        resp = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=(RSS_CONNECT_TIMEOUT, RSS_READ_TIMEOUT),
+        )
+        resp.raise_for_status()
+        feed = feedparser.parse(resp.content)
         for entry in feed.entries[:max_items]:
             summary = entry.get("summary", "")
             # 清理 HTML 标签
@@ -125,20 +134,38 @@ def fetch_all_news(rss_sources: Dict[str, List[str]]) -> Dict[str, List[NewsItem
             source_name = url.split("/")[2]
             tasks.append((category, url, source_name))
 
-    # 并发抓取（最多12个线程）
+    # 并发抓取（最多12个线程）。每个源和整体都设超时，避免坏源卡死整个日报。
     logger.info(f"并发抓取 {len(tasks)} 个RSS源...")
-    with ThreadPoolExecutor(max_workers=12) as executor:
+    executor = ThreadPoolExecutor(max_workers=12)
+    try:
         future_map = {
             executor.submit(_fetch_rss, url, category, source_name, 7): (category, url)
             for category, url, source_name in tasks
         }
-        for future in as_completed(future_map):
-            category, url = future_map[future]
-            try:
-                items = future.result(timeout=15)
-                result[category].extend(items)
-            except Exception as e:
-                logger.debug(f"RSS任务失败 [{url[:40]}]: {e}")
+        try:
+            for future in as_completed(future_map, timeout=RSS_TOTAL_TIMEOUT):
+                category, url = future_map[future]
+                try:
+                    items = future.result()
+                    result[category].extend(items)
+                except Exception as e:
+                    logger.debug(f"RSS任务失败 [{url[:40]}]: {e}")
+        except FutureTimeoutError:
+            unfinished = [
+                url
+                for future, (_, url) in future_map.items()
+                if not future.done()
+            ]
+            for future in future_map:
+                future.cancel()
+            logger.warning(
+                "RSS抓取超过 %s 秒，跳过 %s 个未完成源: %s",
+                RSS_TOTAL_TIMEOUT,
+                len(unfinished),
+                ", ".join(unfinished[:5]),
+            )
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
     # 去重 & 截断
     for category in result:
